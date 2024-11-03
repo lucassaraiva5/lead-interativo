@@ -20,6 +20,10 @@
         @endif
     </head>
     <body>
-        @livewire('teste-vocacional')
+        @guest
+            @livewire('cadastro-usuario')
+        @else
+            @livewire('teste-vocacional')
+        @endguest
     </body>
 </html>
