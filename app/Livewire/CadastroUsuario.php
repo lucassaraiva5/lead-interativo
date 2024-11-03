@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\User;
+use App\Services\AIServiceIntegration;
 use Illuminate\Support\Facades\Auth;
 use Livewire\WithFileUploads;
 use Livewire\Component;
@@ -40,7 +41,7 @@ class CadastroUsuario extends Component
             'photo' => $photoPath,
         ]);
 
-        $this->runNodeScript();
+        $imageLink = AIServiceIntegration::generateImage();
 
         session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
         Auth::login($user);
