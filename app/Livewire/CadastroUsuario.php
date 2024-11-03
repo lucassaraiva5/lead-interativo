@@ -40,6 +40,8 @@ class CadastroUsuario extends Component
             'photo' => $photoPath,
         ]);
 
+        $this->runNodeScript();
+
         session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
         Auth::login($user);
 
@@ -50,5 +52,13 @@ class CadastroUsuario extends Component
     public function render()
     {
         return view('livewire.cadastro-usuario');
+    }
+
+    public function runNodeScript()
+    {
+        $output = shell_exec('node ' . escapeshellarg(base_path('node-scripts/generateImage.js')) . ' 2>&1');
+        $result = json_decode($output, true);
+
+        return $result[0]["url"];
     }
 }
