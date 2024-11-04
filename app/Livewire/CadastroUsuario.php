@@ -42,10 +42,12 @@ class CadastroUsuario extends Component
         ]);
 
         $imageLink = AIServiceIntegration::generateImage();
+        
 
         session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
         Auth::login($user);
 
+        echo($imageLink);
 
         return redirect()->route('home'); // Redireciona para o teste
     }
@@ -55,11 +57,11 @@ class CadastroUsuario extends Component
         return view('livewire.cadastro-usuario');
     }
 
-    public function runNodeScript()
+    public static function runNodeScript()
     {
         $output = shell_exec('node ' . escapeshellarg(base_path('node-scripts/generateImage.js')) . ' 2>&1');
         $result = json_decode($output, true);
 
-        return $result[0]["url"];
+        return $result;
     }
 }
