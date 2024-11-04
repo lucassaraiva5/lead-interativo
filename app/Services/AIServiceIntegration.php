@@ -50,6 +50,7 @@ class AIServiceIntegration {
 
     public static function generateImage(string $fileName)
     {
+        set_time_limit(-1);
         $client = new Client();
         $apiKey = config('services.api.key');
         //$apiKey = env('OPENAI_API_KEY'); 

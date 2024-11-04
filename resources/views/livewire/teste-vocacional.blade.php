@@ -23,14 +23,30 @@
         <div class="text-center">
             <h2 class="text-2xl font-bold mb-4">Seu resultado é: {{ $resultado->nome }}</h2>
             <p class="mb-6">{{ $resultado->descricao }}</p>
-            <img src="{{ $avatar}}">
+            <img src="{{ $avatar }}" alt="Imagem do resultado" class="mb-4 rounded-lg">
 
-            <a href="https://www.instagram.com" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">
-                Compartilhar no Instagram
-            </a>
+            <button onclick="compartilharImagem('{{ $avatar }}')" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">
+                Compartilhar Imagem
+            </button>
             <button wire:click="reiniciarTeste" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg">
                 Refazer Teste
             </button>
         </div>
     @endif
+
+    <script>
+        function compartilharImagem(url) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Confira esta imagem!',
+                    text: 'Veja esta imagem incrível!',
+                    url: url
+                })
+                .then(() => console.log('Compartilhamento bem-sucedido'))
+                .catch((error) => console.error('Erro ao compartilhar:', error));
+            } else {
+                alert('A API de compartilhamento da Web não é suportada neste navegador.');
+            }
+        }
+    </script>
 </div>
