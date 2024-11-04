@@ -30,6 +30,7 @@ class CadastroUsuario extends Component
     {
         try {
 
+            $this->isLoading = true;
             $this->validate([
                 'photo' => 'required|image|mimes:jpeg,jpg|max:10240', // 10MB
             ]);
@@ -38,8 +39,6 @@ class CadastroUsuario extends Component
             if ($this->photo) {
                 $photoPath = $this->photo->store('photos', 'public'); // Salva a foto na pasta `storage/app/public/photos`
             }
-
-            $this->isLoading = true;
 
             $user = User::create([
                 'name' => $this->name,
