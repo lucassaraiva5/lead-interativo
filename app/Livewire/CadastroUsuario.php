@@ -48,7 +48,10 @@ class CadastroUsuario extends Component
                 'photo' => $photoPath,
             ]);
 
-            ProcessarCadastroUsuario::dispatch($user);
+            //ProcessarCadastroUsuario::dispatch($user);
+            $imageLink = AIServiceIntegration::generateImage($user->photo);
+            $user->avatar = $imageLink;
+            $user->save();
 
             session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
             
