@@ -44,9 +44,10 @@
     </div>
 
     <!-- Overlay de carregamento -->
-    <div x-data="{ isLoading: @entangle('isLoading') }" x-show="isLoading" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
+    <div wire:loading wire:target="cadastrar" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
         <div class="spinner border-4 border-blue-500 border-t-transparent border-solid rounded-full w-12 h-12 animate-spin"></div>
     </div>
+
     <style>
         .spinner {
             border: 4px solid rgba(0, 0, 0, 0.1);
