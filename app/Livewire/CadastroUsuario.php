@@ -27,30 +27,36 @@ class CadastroUsuario extends Component
 
     public function cadastrar()
     {
-        $this->validate([
-            'photo' => 'required|image|mimes:jpeg,jpg|max:10240', // 10MB
-        ]);
+        try {
 
-        $photoPath = null;
-        if ($this->photo) {
-            $photoPath = $this->photo->store('photos', 'public'); // Salva a foto na pasta `storage/app/public/photos`
+            $this->validate([
+                'photo' => 'required|image|mimes:jpeg,jpg|max:10240', // 10MB
+            ]);
+
+            $photoPath = null;
+            if ($this->photo) {
+                $photoPath = $this->photo->store('photos', 'public'); // Salva a foto na pasta `storage/app/public/photos`
+            }
+
+            $user = User::create([
+                'name' => $this->name,
+                'email' => $this->email,
+                'password' => Hash::make($this->password),
+                'photo' => $photoPath,
+            ]);
+
+            $imageLink = AIServiceIntegration::generateImage($user->photo);
+            $user->avatar = $imageLink;
+            $user->save();
+
+            session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
+            
+            Auth::login($user);
+
+            return redirect()->route('home'); // Redireciona para o teste
+        } catch (\Exception $e) {
+            session()->flash('error', 'O upload falhou: ' . $e->getMessage());
         }
-
-        $user = User::create([
-            'name' => $this->name,
-            'email' => $this->email,
-            'password' => Hash::make($this->password),
-            'photo' => $photoPath,
-        ]);
-
-        $imageLink = AIServiceIntegration::generateImage($user->photo);
-        $user->avatar = $imageLink;
-        $user->save();
-
-        session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
-        Auth::login($user);
-
-        return redirect()->route('home'); // Redireciona para o teste
     }
 
     public function render()
