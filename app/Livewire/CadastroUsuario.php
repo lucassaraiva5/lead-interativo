@@ -17,12 +17,13 @@ class CadastroUsuario extends Component
     public $email;
     public $password;
     public $photo;
+    public $isLoading = false;
 
     protected $rules = [
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email',
         'password' => 'required|min:6',
-        'photo' => 'nullable|image|max:5120', // Limite de 1MB para o arquivo de foto
+        'photo' => 'nullable|image|max:10120', // Limite de 1MB para o arquivo de foto
     ];
 
     public function cadastrar()
@@ -38,6 +39,8 @@ class CadastroUsuario extends Component
                 $photoPath = $this->photo->store('photos', 'public'); // Salva a foto na pasta `storage/app/public/photos`
             }
 
+            $this->isLoading = true;
+
             $user = User::create([
                 'name' => $this->name,
                 'email' => $this->email,
@@ -52,6 +55,7 @@ class CadastroUsuario extends Component
             session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
             
             Auth::login($user);
+            $this->isLoading = false;
 
             return redirect()->route('home'); // Redireciona para o teste
         } catch (\Exception $e) {
