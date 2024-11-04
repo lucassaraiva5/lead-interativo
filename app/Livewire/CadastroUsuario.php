@@ -41,13 +41,12 @@ class CadastroUsuario extends Component
             'photo' => $photoPath,
         ]);
 
-        $imageLink = AIServiceIntegration::generateImage();
-        
+        $imageLink = AIServiceIntegration::generateImage($user->photo);
+        $user->avatar = $imageLink;
+        $user->save();
 
         session()->flash('message', 'Cadastro realizado com sucesso! Você pode iniciar o teste.');
         Auth::login($user);
-
-        echo($imageLink);
 
         return redirect()->route('home'); // Redireciona para o teste
     }
