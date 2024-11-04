@@ -8,7 +8,9 @@ use App\Services\AIServiceIntegration;
 use Illuminate\Support\Facades\Auth;
 use Livewire\WithFileUploads;
 use Livewire\Component;
+use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class CadastroUsuario extends Component
 {
@@ -36,16 +38,17 @@ class CadastroUsuario extends Component
                 'photo' => 'required|image|mimes:jpeg,jpg|max:10240', // 10MB
             ]);
 
-            $photoPath = null;
-            if ($this->photo) {
-                $photoPath = $this->photo->store('photos', 'public'); // Salva a foto na pasta `storage/app/public/photos`
-            }
+            $imagemRedimensionada = Image::read($this->photo->getRealPath())
+                                     ->scale(600,800);
+
+            $nomeImagem = 'imagem_redimensionada_' . time() . '.jpg';
+            Storage::disk('public')->put($nomeImagem, (string) $imagemRedimensionada->encode());
 
             $user = User::create([
                 'name' => $this->name,
                 'email' => $this->email,
                 'password' => Hash::make($this->password),
-                'photo' => $photoPath,
+                'photo' => "/" . $nomeImagem,
             ]);
 
             //ProcessarCadastroUsuario::dispatch($user);
