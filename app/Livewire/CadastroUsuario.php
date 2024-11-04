@@ -27,7 +27,9 @@ class CadastroUsuario extends Component
 
     public function cadastrar()
     {
-        $this->validate();
+        $this->validate([
+            'photo' => 'required|image|mimes:jpeg,jpg|max:10240', // 10MB
+        ]);
 
         $photoPath = null;
         if ($this->photo) {
