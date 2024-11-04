@@ -10,7 +10,8 @@ class AIServiceIntegration {
     public static function getImageDescription(string $fileName)
     {
         $client = new Client();
-        $apiKey = env('OPENAI_API_KEY'); 
+        $apiKey = config('services.api.key');
+        //$apiKey = env('OPENAI_API_KEY'); 
         
         $caminhoImagem = base_path('public/storage/' . $fileName);
         $imagemBase64 = base64_encode(file_get_contents($caminhoImagem));
@@ -50,7 +51,8 @@ class AIServiceIntegration {
     public static function generateImage(string $fileName)
     {
         $client = new Client();
-        $apiKey = env('OPENAI_API_KEY'); 
+        $apiKey = config('services.api.key');
+        //$apiKey = env('OPENAI_API_KEY'); 
         
         for ($i=0; $i < 5; $i++) { 
             $imageDescription = AIServiceIntegration::getImageDescription($fileName);
