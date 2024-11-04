@@ -16,6 +16,8 @@ class ProcessarCadastroUsuario implements ShouldQueue
 
     protected $user;
 
+    public $timeout = 120;
+
     /**
      * Create a new job instance.
      *
