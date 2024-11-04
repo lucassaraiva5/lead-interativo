@@ -6,6 +6,7 @@ use App\Models\Question;
 use App\Models\Questionary;
 use App\Models\UserResponse;
 use App\Models\Vocation;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class TesteVocacional extends Component
@@ -14,6 +15,8 @@ class TesteVocacional extends Component
     public $respostas = [];
     public $indiceAtual = 0; // Controla qual pergunta está sendo exibida
     public $resultado;
+
+    public $avatar;
 
     public function mount()
     {
@@ -76,6 +79,9 @@ class TesteVocacional extends Component
         // Encontrar a vocação com a maior pontuação
         $vocationId = array_keys($pontuacoes, max($pontuacoes))[0];
         $this->resultado = Vocation::find($vocationId);
+
+        $user = Auth::user();
+        $this->avatar = $user->avatar;
     }
 
     public function reiniciarTeste()
@@ -83,6 +89,7 @@ class TesteVocacional extends Component
         $this->respostas = [];
         $this->indiceAtual = 0;
         $this->resultado = null;
+        $this->avatar = null;
     }
 
     public function render()

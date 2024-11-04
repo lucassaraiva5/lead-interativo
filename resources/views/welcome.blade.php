@@ -19,7 +19,7 @@
             </style>
         @endif
     </head>
-    <body>
+    <body class="bg-gray-900 min-h-screen">
         @guest
             @livewire('cadastro-usuario')
         @else
