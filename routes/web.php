@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\WebhookController;
 use App\Livewire\CadastroUsuario;
 use App\Livewire\TesteVocacional;
 use Illuminate\Support\Facades\Auth;
@@ -8,6 +9,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::post('/webhook', [WebhookController::class, 'handle']);
+Route::get('/webhook', [WebhookController::class, 'handle']);
 
 Route::post('/logout', function () {
     Auth::logout();
