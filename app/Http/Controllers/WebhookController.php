@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\QuestionBot;
+use App\Models\UserQuestionStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -74,7 +76,35 @@ class WebhookController extends Controller
 
     public function process_message(Message $message)
     {
+      $userQuestionStatus = UserQuestionStatus::where('number', $message->from)->first();
+
+      if ($userQuestionStatus == null) {
+          $userQuestionStatus = UserQuestionStatus::create([
+            'number'=> $message->from,
+            'current_question'=> 0,
+          ]);
+      }
+
+      $questaoAtual = $userQuestionStatus->current_question;
+
+      if($questaoAtual === 0) {
+         //salva o nome
+         $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
+         $userQuestionStatus->save();
+      } else if ($questaoAtual > 0 && $questaoAtual <= 7) {
+          if($message->body !== "1" && $message->body !== "2" && $message->body !== "3") {
+              $message->body = "Opção inválida.";
+              $this->sendMessage($message);
+          }else{
+              //salva a resposta
+              $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
+              $userQuestionStatus->save();
+         }
+      }
+
+      $question = QuestionBot::where('order', $userQuestionStatus->current_question)->first();
       
+      $message->body = $question->question;
       if($message->from === "555182688209@c.us") {
           $this->sendMessage($message);
       }
