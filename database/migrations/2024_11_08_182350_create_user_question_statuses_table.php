@@ -14,6 +14,9 @@ return new class extends Migration
         Schema::create('user_question_statuses', function (Blueprint $table) {
             $table->id();
             $table->string('number')->unique('user_number');
+            $table->string('name')->nullable();
+            $table->text('image_sent')->nullable(true);
+            $table->text('image_generated')->nullable(true);
             $table->integer('current_question')->default(0);
             $table->timestamps();
         });

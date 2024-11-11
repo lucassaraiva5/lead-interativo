@@ -8,6 +8,9 @@ class UserQuestionStatus extends Model
 {
     protected $fillable = [
         'number',
+        'name',
+        'image_sent',
+        'image_generated',
         'current_question'
     ];
 }

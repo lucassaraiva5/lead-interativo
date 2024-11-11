@@ -13,8 +13,8 @@ class AIServiceIntegration {
         $apiKey = config('services.api.key');
         //$apiKey = env('OPENAI_API_KEY'); 
         
-        $caminhoImagem = base_path('public/storage/' . $fileName);
-        $imagemBase64 = base64_encode(file_get_contents($caminhoImagem));
+        //$caminhoImagem = base_path('public/storage/' . $fileName);
+        //$imagemBase64 = base64_encode(file_get_contents($caminhoImagem));
 
         $response = $client->post('https://api.openai.com/v1/chat/completions', [
             'headers' => [
@@ -34,8 +34,11 @@ class AIServiceIntegration {
                             [
                                 'type' => 'image_url',
                                 'image_url' => [
-                                    'url' => "data:image/jpeg;base64,". $imagemBase64
+                                    'url' => $fileName
                                 ]
+                                // 'image_url' => [
+                                //     'url' => "data:image/jpeg;base64,". $imagemBase64
+                                // ]
                             ]
                         ]
                     ],

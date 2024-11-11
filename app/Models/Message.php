@@ -10,6 +10,7 @@ class Message extends Model
         'from',
         'to',
         'body',
+        'media',
         'processed',
         'received_at'
     ];

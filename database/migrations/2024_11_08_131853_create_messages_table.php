@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('from');
             $table->string('to');
-            $table->text('body');
+            $table->text('body')->nullable(true);
+            $table->text('media')->nullable(true);
             $table->timestamp('received_at');
             $table->boolean('processed')->default(false);
             $table->timestamps();
