@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\Questionary;
 use App\Models\QuestionBot;
 use App\Models\UserQuestionStatus;
+use App\Models\UserResponse;
+use App\Models\Vocation;
 use App\Services\AIServiceIntegration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,11 +17,7 @@ class WebhookController extends Controller
 {
     public function handle(Request $request)
     {
-      Log::info("Mandou mensagem", [$request->all()]);
-
-      if ($request->has('media') && $request->input('media_type') === 'image') {
-        
-      }
+        Log::info("Mandou mensagem", [$request->all()]);
 
         $event = $request->all();
         $from = $event["data"]["from"];
@@ -84,17 +83,45 @@ class WebhookController extends Controller
       }
     }
 
+    public function calcularResultado($questionario)
+    {
+        $pontuacoes = [];
+
+        $respostasUsuario = $questionario->userResponses()->with('responseOption.pontuacoes.vocation')->get();
+
+        foreach ($respostasUsuario as $respostaUsuario) {
+            $pontuacoesOpcao = $respostaUsuario->responseOption->pontuacoes;
+
+            foreach ($pontuacoesOpcao as $pontuacao) {
+                $vocationId = $pontuacao->vocation->id;
+                if (!isset($pontuacoes[$vocationId])) {
+                    $pontuacoes[$vocationId] = 0;
+                }
+                $pontuacoes[$vocationId] += $pontuacao->pontos;
+            }
+        }
+
+        // Encontrar a vocação com a maior pontuação
+        $vocationId = array_keys($pontuacoes, max($pontuacoes))[0];
+        $vocation =  Vocation::find($vocationId);
+
+        return $vocation;
+    }
+
     public function process_message(Message $message)
     {
       $userQuestionStatus = UserQuestionStatus::where('number', $message->from)->first();
 
       if ($userQuestionStatus == null) {
+          $questionario = Questionary::create();
           $userQuestionStatus = UserQuestionStatus::create([
             'number'=> $message->from,
             'current_question'=> -1,
+            'questionary_id' => $questionario->id
           ]);
       }
 
+      $questionario = Questionary::find($userQuestionStatus->questionary_id)->first();
       $questaoAtual = $userQuestionStatus->current_question;
 
       Log::info('Questao atual: '. $questaoAtual);
@@ -109,7 +136,12 @@ class WebhookController extends Controller
               $message->body = "Opção inválida.";
               $this->sendMessage($message);
           }else{
-              //salva a resposta
+              $responseOption = intval($message->body) + 1;
+              UserResponse::create([
+                'questionary_id' => $questionario->id,
+                'question_id' => $questaoAtual,
+                'response_option_id' => $responseOption,
+              ]);
               $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
               $userQuestionStatus->save();
          }
@@ -124,9 +156,13 @@ class WebhookController extends Controller
           $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
           $this->sendMessage($message);
           $imageLink = AIServiceIntegration::generateImage($message->media);
+          $vocacao = $this->calcularResultado($questionario);
           $userQuestionStatus->image_generated = $imageLink;
+          $userQuestionStatus->vocation = $vocacao->nome;
           $userQuestionStatus->save();
           $message->body = $userQuestionStatus->image_generated;
+          $this->sendMessage($message);
+          $message->body = "O resultado do seu testr foi: " .$userQuestionStatus->vocation;
           $this->sendMessage($message);
           return;
         }
@@ -137,6 +173,9 @@ class WebhookController extends Controller
           $this->sendMessage($message);
         }else {
           $message->body = $userQuestionStatus->image_generated;
+          $this->sendMessage($message);
+
+          $message->body = $userQuestionStatus->vocation;
           $this->sendMessage($message);
         }
         

@@ -17,7 +17,9 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->text('image_sent')->nullable(true);
             $table->text('image_generated')->nullable(true);
+            $table->integer('questionary_id');
             $table->integer('current_question')->default(0);
+            $table->string('vocation')->nullable(true);
             $table->timestamps();
         });
     }

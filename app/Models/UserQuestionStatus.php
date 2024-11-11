@@ -10,6 +10,8 @@ class UserQuestionStatus extends Model
         'number',
         'name',
         'image_sent',
+        'vocation',
+        'questionary_id',
         'image_generated',
         'current_question'
     ];
