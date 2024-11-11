@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 
 class AIServiceIntegration {
 
@@ -51,7 +53,7 @@ class AIServiceIntegration {
         return $data['choices'][0]['message']['content'];
     }
 
-    public static function generateImage(string $fileName)
+    public static function generateImage(string $fileName, int $id)
     {
         set_time_limit(-1);
         $client = new Client();
@@ -78,7 +80,45 @@ class AIServiceIntegration {
         ]);
 
         $imageData = json_decode($responseImage->getBody(), true);
+        $image = file_get_contents($imageData["data"][0]["url"]);
 
-        return $imageData["data"][0]["url"];
+        $imagemRedimensionada = Image::read($image)->scale(616,616);;
+        $imageName = "image_" . uniqid() . '.jpg';
+        Storage::disk('public')->put($imageName, (string) $imagemRedimensionada->encode());
+
+        $backgroundPath = resource_path("image/{$id}.png");
+        $overlayPath = storage_path('app/public/' . $imageName);
+
+        $overlayInfo = getimagesize($overlayPath);
+        $overlayMime = $overlayInfo['mime'];
+
+        $background = imagecreatefrompng($backgroundPath);
+
+        if ($overlayMime === 'image/jpeg') {
+            $overlay = imagecreatefromjpeg($overlayPath);
+        } elseif ($overlayMime === 'image/png') {
+            $overlay = imagecreatefrompng($overlayPath);
+        } else {
+            throw new \Exception('Formato de imagem não suportado. Apenas JPEG e PNG são permitidos.');
+        }
+
+        $overlayWidth = imagesx($overlay);
+        $overlayHeight = imagesy($overlay);
+
+        imagealphablending($background, true);
+        imagesavealpha($background, true);
+        $xPosition = 232; // posição X no background
+        $yPosition = 270; // posição Y no background
+
+        imagecopy($background, $overlay, $xPosition, $yPosition, 0, 0, $overlayWidth, $overlayHeight);
+        $uniqueId = uniqid();
+        $outputFilename = "output_{$uniqueId}.png";
+        $outputPath = storage_path("app/public/{$outputFilename}");
+        imagepng($background, $outputPath);
+
+        imagedestroy($background);
+        imagedestroy($overlay);
+
+        return $outputFilename;
     }
 }

@@ -17,8 +17,6 @@ class WebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        Log::info("Mandou mensagem", [$request->all()]);
-
         $event = $request->all();
         $from = $event["data"]["from"];
         $to = $event["data"]["from"];
@@ -43,7 +41,7 @@ class WebhookController extends Controller
 
     public function sendMessage(Message $message)
     {
-      if($message->from === "555182688209@c.us") {
+      //if($message->from === "555182688209@c.us") {
         $token = config('services.whatsapp.token');
         $instance = config('services.whatsapp.instance');
 
@@ -80,7 +78,7 @@ class WebhookController extends Controller
         } else {
           echo $response;
         }
-      }
+      //}
     }
 
     public function calcularResultado($questionario)
@@ -108,6 +106,52 @@ class WebhookController extends Controller
         return $vocation;
     }
 
+    public function sendImageMessage(Message $message,$image,$caption="",$priority=10,$referenceId="",$nocache=false){
+
+      $to = str_replace("@c.us", "", $message->from);
+
+			$params =array("to"=>$to,"caption"=>$caption,"image"=>$image,"priority"=>$priority,"referenceId"=>$referenceId,"nocache"=>$nocache);
+			return $this->sendRequest("POST","messages/image",$params );
+		}
+
+    public function sendRequest($method,$path,$params=array()){
+
+      $token = config('services.whatsapp.token');
+      $instance = config('services.whatsapp.instance');
+
+      if(!is_callable('curl_init')){
+      return array("Error"=>"cURL extension is disabled on your server");
+      }
+      $url="https://api.ultramsg.com/".$instance."/".$path;
+      $params['token'] = $token;
+      $data=http_build_query($params);
+      if(strtolower($method)=="get")$url = $url . '?' . $data;
+      $curl = curl_init($url);
+      if(strtolower($method)=="post"){
+      curl_setopt($curl, CURLOPT_POST, true);
+      curl_setopt($curl, CURLOPT_POSTFIELDS,$data);
+      }	 
+      curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+      curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+      curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($curl, CURLOPT_HEADER, 1);
+      $response = curl_exec($curl);
+      $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+      if($httpCode == 404) {
+      return array("Error"=>"instance not found or pending please check you instance id");
+      }
+      $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
+      $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+      $header = substr($response, 0, $header_size);
+      $body = substr($response, $header_size);
+      curl_close($curl);
+      
+      if (strpos($contentType,'application/json') !== false) {
+      return json_decode($body,true);
+      }
+      return $body;
+		}
+
     public function process_message(Message $message)
     {
       $userQuestionStatus = UserQuestionStatus::where('number', $message->from)->first();
@@ -123,9 +167,6 @@ class WebhookController extends Controller
 
       $questionario = Questionary::find($userQuestionStatus->questionary_id)->first();
       $questaoAtual = $userQuestionStatus->current_question;
-
-      Log::info('Questao atual: '. $questaoAtual);
-      Log::info('Mensagem: '. $message);
 
       if($questaoAtual === 0) {
          $userQuestionStatus->name = $message->body;
@@ -155,14 +196,14 @@ class WebhookController extends Controller
           $userQuestionStatus->save();
           $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
           $this->sendMessage($message);
-          $imageLink = AIServiceIntegration::generateImage($message->media);
           $vocacao = $this->calcularResultado($questionario);
-          $userQuestionStatus->image_generated = $imageLink;
+          $imagePath = AIServiceIntegration::generateImage($message->media, $vocacao->id);
+          $userQuestionStatus->image_generated = $imagePath;
           $userQuestionStatus->vocation = $vocacao->nome;
           $userQuestionStatus->save();
-          $message->body = $userQuestionStatus->image_generated;
-          $this->sendMessage($message);
-          $message->body = "O resultado do seu testr foi: " .$userQuestionStatus->vocation;
+          $path = Storage::disk('public')->path($userQuestionStatus->image_generated);
+          $this->sendImageMessage($message, base64_encode(file_get_contents($imagePath)));
+          $message->body = "O resultado do seu teste foi: " .$userQuestionStatus->vocation;
           $this->sendMessage($message);
           return;
         }
@@ -172,8 +213,10 @@ class WebhookController extends Controller
           $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
           $this->sendMessage($message);
         }else {
+          $path = Storage::disk('public')->path($userQuestionStatus->image_generated);
+
           $message->body = $userQuestionStatus->image_generated;
-          $this->sendMessage($message);
+          $this->sendImageMessage($message, base64_encode(file_get_contents($path)));
 
           $message->body = $userQuestionStatus->vocation;
           $this->sendMessage($message);
