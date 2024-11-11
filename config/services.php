@@ -37,5 +37,8 @@ return [
     'api' => [
         'key' => env('OPENAI_API_KEY'),
     ],
-
+    'whatsapp' => [
+        'token' => env('TOKEN_WHATSAPP'),
+        'instance' => env('INSTANCE_ID_WHATSAPP'),
+    ]
 ];

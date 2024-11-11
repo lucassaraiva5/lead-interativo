@@ -22,6 +22,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             QuestionOptionsSeeder::class,
         ]);
+
+        $this->call([
+            QuestionBotSeeder::class
+        ]);
     }
    
 }
