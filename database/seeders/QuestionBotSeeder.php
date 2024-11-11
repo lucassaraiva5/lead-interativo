@@ -58,6 +58,7 @@ Digite apenas o numero da sua resposta',
 3 - Tento equilibrar prazos sem perder a qualidade do trabalho.
 
 Digite apenas o numero da sua resposta',
+            'Me envie por favor uma selfie onde apareça o seu rosto para que eu possa lhe enviar uma surpreza!',
         ];
 
         foreach ($perguntas as $key => $texto) {

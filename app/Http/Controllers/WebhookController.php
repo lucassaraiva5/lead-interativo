@@ -81,11 +81,13 @@ class WebhookController extends Controller
       if ($userQuestionStatus == null) {
           $userQuestionStatus = UserQuestionStatus::create([
             'number'=> $message->from,
-            'current_question'=> 0,
+            'current_question'=> -1,
           ]);
       }
 
       $questaoAtual = $userQuestionStatus->current_question;
+
+      Log::info('Questao atual: '. $questaoAtual);
 
       if($questaoAtual === 0) {
          //salva o nome
@@ -100,11 +102,22 @@ class WebhookController extends Controller
               $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
               $userQuestionStatus->save();
          }
+      } else if($questaoAtual == 8) {
+        $message->body = "Desculpe essa nao é uma imagem valida";
+        $this->sendMessage($message);
+      } else if($questaoAtual > 8) {
+        $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
+        $this->sendMessage($message);
       }
 
-      $question = QuestionBot::where('order', $userQuestionStatus->current_question)->first();
-      
+      if($userQuestionStatus->current_question === -1) {
+        $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
+        $userQuestionStatus->save();
+      }
+
+      $question = QuestionBot::where(column: 'order', operator: "=", value: $userQuestionStatus->current_question)->first();
       $message->body = $question->question;
+      
       if($message->from === "555182688209@c.us") {
           $this->sendMessage($message);
       }
