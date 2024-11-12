@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('question_bots', function (Blueprint $table) {
             $table->id();
-            $table->string('question');
+            $table->text('question');
             $table->integer('order');
             $table->timestamps();
         });
