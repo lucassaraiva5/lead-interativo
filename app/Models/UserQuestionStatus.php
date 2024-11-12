@@ -11,6 +11,9 @@ class UserQuestionStatus extends Model
         'name',
         'image_sent',
         'vocation',
+        'current_random_question',
+        'instagram',
+        'school',
         'questionary_id',
         'image_generated',
         'current_question'

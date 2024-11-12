@@ -13,7 +13,6 @@ class AIServiceIntegration {
     {
         $client = new Client();
         $apiKey = config('services.api.key');
-        //$apiKey = env('OPENAI_API_KEY'); 
         
         //$caminhoImagem = base_path('public/storage/' . $fileName);
         //$imagemBase64 = base64_encode(file_get_contents($caminhoImagem));

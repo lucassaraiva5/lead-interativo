@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\UserQuestionStatus;
 use Illuminate\Console\Command;
 
 class ListUsers extends Command
@@ -20,7 +21,7 @@ class ListUsers extends Command
     public function handle()
     {
         // Obtém todos os usuários
-        $users = User::all();
+        $users = UserQuestionStatus::all();
 
         // Verifica se existem usuários
         if ($users->isEmpty()) {
@@ -30,13 +31,14 @@ class ListUsers extends Command
 
         // Exibe os usuários em uma tabela
         $this->table(
-            ['ID', 'Name', 'Email', 'Created At'],
+            ['ID', 'Instagram', 'School', 'Image Sent', 'Image Generated', 'Created At'],
             $users->map(function ($user) {
                 return [
                     'ID' => $user->id,
-                    'Name' => $user->name,
-                    'Email' => $user->email,
-                    'Photo' => $user->photo,
+                    'instagram' => $user->instagram,
+                    'School' => $user->school,
+                    'Image Sent' => $user->image_sent,
+                    'Image Generated' => $user->image_generated,
                     'Created At' => $user->created_at->toDateTimeString(),
                 ];
             })->toArray()
