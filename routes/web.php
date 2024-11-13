@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\WebhookController;
 use App\Livewire\CadastroUsuario;
 use App\Livewire\TesteVocacional;
@@ -12,6 +14,8 @@ Route::get('/', function () {
 
 Route::post('/webhook', [WebhookController::class, 'handle']);
 Route::get('/webhook', [WebhookController::class, 'handle']);
+Route::get('/export/excel', [ExportController::class, 'exportData']);
+
 
 Route::post('/logout', function () {
     Auth::logout();
@@ -21,7 +25,6 @@ Route::post('/logout', function () {
 Route::get('/cadastro', CadastroUsuario::class)->name('cadastro-usuario');
 Route::get('/teste-vocacional', TesteVocacional::class)->middleware('auth')->name('teste-vocacional');
 
-
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', action: [App\Http\Controllers\HomeController::class, 'index'])->name('home');
