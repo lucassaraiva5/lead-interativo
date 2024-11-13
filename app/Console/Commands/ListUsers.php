@@ -31,10 +31,12 @@ class ListUsers extends Command
 
         // Exibe os usuários em uma tabela
         $this->table(
-            ['ID', 'Instagram', 'School', 'Image Sent', 'Image Generated', 'Created At'],
+            ['ID', 'number', 'name', 'Instagram', 'School', 'Image Sent', 'Image Generated', 'Created At'],
             $users->map(function ($user) {
                 return [
                     'ID' => $user->id,
+                    'number' => $user->number,
+                    'name' => $user->name,
                     'instagram' => $user->instagram,
                     'School' => $user->school,
                     'Image Sent' => $user->image_sent,
