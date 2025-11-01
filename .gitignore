@@ -20,3 +20,7 @@ yarn-error.log
 /.idea
 /.vscode
 /.zed
+
+/whatsapp-server/node_modules/*
+/whatsapp-server/.wwebjs_auth/*
+/whatsapp-server/.wwebjs_cache/*

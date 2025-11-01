@@ -18,13 +18,19 @@ class WebhookController extends Controller
     public function handle(Request $request)
     {
         $event = $request->all();
-        $from = $event["data"]["from"];
-        $to = $event["data"]["from"];
-        $body = $event["data"]["body"];
-        $media = $event["data"]["media"];
+
+        $from = $event["data"]["from"] ?? null;
+        $to = $event["data"]["to"] ?? $from;
+        $body = $event["data"]["body"] ?? '';
+        $media = $event["data"]["media"] ?? null;
         $receivedAt = now();
 
-        // Salva a mensagem no banco de dados
+        if (!$from) {
+            Log::error('Webhook recebido sem número de origem', ['event' => $event]);
+            return response("Missing sender", 400);
+        }
+
+        // Salva a mensagem
         $message = Message::create([
             'from' => $from,
             'to' => $to,
@@ -34,227 +40,224 @@ class WebhookController extends Controller
         ]);
 
         $this->process_message($message);
-
-        // Retorna uma resposta para o UltraMsg
         return response("", 200);
     }
 
     public function sendMessage(Message $message)
     {
-      //if($message->from === "555182688209@c.us") {
-        $token = config('services.whatsapp.token');
-        $instance = config('services.whatsapp.instance');
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('http://localhost:3000/send-message', [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json'
+                ],
+                'json' => [
+                    'number' => str_replace('@c.us', '', $message->from),
+                    'message' => $message->body
+                ],
+                'http_errors' => false
+            ]);
 
-        $to = str_replace("@c.us", "", $message->from);
-        $params=array(
-            'token' => $token,
-            'to' => '+' . $to,
-            'body' => $message->body,
-        );
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-          CURLOPT_URL => "https://api.ultramsg.com/".$instance."/messages/chat",
-          CURLOPT_RETURNTRANSFER => true,
-          CURLOPT_ENCODING => "",
-          CURLOPT_MAXREDIRS => 10,
-          CURLOPT_TIMEOUT => 30,
-          CURLOPT_SSL_VERIFYHOST => 0,
-          CURLOPT_SSL_VERIFYPEER => 0,
-          CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-          CURLOPT_CUSTOMREQUEST => "POST",
-          CURLOPT_POSTFIELDS => http_build_query($params),
-          CURLOPT_HTTPHEADER => array(
-            "content-type: application/x-www-form-urlencoded"
-          ),
-        ));
-            
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-        
-        curl_close($curl);
-        
-        if ($err) {
-          echo "cURL Error #:" . $err;
-        } else {
-          echo $response;
-        }
-      //}
-    }
-
-    public function calcularResultado($questionario)
-    {
-        $pontuacoes = [];
-
-        $respostasUsuario = $questionario->userResponses()->with('responseOption.pontuacoes.vocation')->get();
-
-        foreach ($respostasUsuario as $respostaUsuario) {
-            $pontuacoesOpcao = $respostaUsuario->responseOption->pontuacoes;
-
-            foreach ($pontuacoesOpcao as $pontuacao) {
-                $vocationId = $pontuacao->vocation->id;
-                if (!isset($pontuacoes[$vocationId])) {
-                    $pontuacoes[$vocationId] = 0;
-                }
-                $pontuacoes[$vocationId] += $pontuacao->pontos;
+            if ($response->getStatusCode() !== 200) {
+                Log::error('Erro ao enviar mensagem WhatsApp: ' . $response->getBody());
             }
+        } catch (\Exception $e) {
+            Log::error('Erro ao enviar mensagem WhatsApp: ' . $e->getMessage());
         }
-
-        // Encontrar a vocação com a maior pontuação
-        $vocationId = array_keys($pontuacoes, max($pontuacoes))[0];
-        $vocation =  Vocation::find($vocationId);
-
-        return $vocation;
     }
 
-    public function sendImageMessage(Message $message,$image,$caption="",$priority=10,$referenceId="",$nocache=false){
+    public function sendImageMessage(Message $message, $image, $caption = "", $priority = 10, $referenceId = "", $nocache = false)
+    {
         $to = str_replace("@c.us", "", $message->from);
-	    $params =array("to"=>$to,"caption"=>$caption,"image"=>$image,"priority"=>$priority,"referenceId"=>$referenceId,"nocache"=>$nocache);
-		return $this->sendRequest("POST","messages/image",$params );
-	}
+        $params = [
+            "to" => $to,
+            "caption" => $caption,
+            "image" => $image,
+            "priority" => $priority,
+            "referenceId" => $referenceId,
+            "nocache" => $nocache
+        ];
 
-    public function sendRequest($method,$path,$params=array()){
+        return $this->sendRequest("POST", "messages/image", $params);
+    }
 
-        $token = config('services.whatsapp.token');
-        $instance = config('services.whatsapp.instance');
+    public function sendRequest($method, $path, $params = [])
+    {
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('http://localhost:3000/send-message', [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json'
+                ],
+                'json' => [
+                    'number' => $params['to'],
+                    'message' => $params['caption'] ?? '',
+                    'image' => $params['image'] ?? null
+                ],
+                'http_errors' => false
+            ]);
 
-        if(!is_callable('curl_init')){
-            return array("Error"=>"cURL extension is disabled on your server");
+            if ($response->getStatusCode() !== 200) {
+                Log::error('Erro ao enviar mensagem WhatsApp: ' . $response->getBody());
+                return ["Error" => $response->getBody()];
+            }
+
+            return json_decode($response->getBody(), true);
+        } catch (\Exception $e) {
+            Log::error('Erro ao enviar mensagem WhatsApp: ' . $e->getMessage());
+            return ["Error" => $e->getMessage()];
         }
-        $url="https://api.ultramsg.com/".$instance."/".$path;
-        $params['token'] = $token;
-        $data=http_build_query($params);
-        if(strtolower($method)=="get")$url = $url . '?' . $data;
-        $curl = curl_init($url);
-        if(strtolower($method)=="post"){
-            curl_setopt($curl, CURLOPT_POST, true);
-            curl_setopt($curl, CURLOPT_POSTFIELDS,$data);
-        }	 
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_HEADER, 1);
-        $response = curl_exec($curl);
-        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        if($httpCode == 404) {
-            return array("Error"=>"instance not found or pending please check you instance id");
-        }
-        $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
-        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-        $header = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        curl_close($curl);
-        
-        if (strpos($contentType,'application/json') !== false) {
-            return json_decode($body,true);
-        }
-        return $body;
     }
 
     public function process_message(Message $message)
     {
-        $userQuestionStatus = UserQuestionStatus::where('number', "=",$message->from)->first();
-
-        if ($userQuestionStatus == null) {
-            $userQuestionStatus = UserQuestionStatus::create([
-                'number'=> $message->from,
-                'current_question'=> -1,
-                'current_random_question' => rand(1,7),
-            ]);
-        }
+        $userQuestionStatus = UserQuestionStatus::firstOrCreate(
+            ['number' => $message->from],
+            ['current_question' => -1, 'current_random_question' => rand(1, 7)]
+        );
 
         $questaoAtual = $userQuestionStatus->current_question;
 
-        if($questaoAtual === 0) {
-            $userQuestionStatus->name = $message->body;
-            $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
-            $userQuestionStatus->save();
-        } else if ($questaoAtual > 0 && $questaoAtual <= 5) {
-            if($message->body !== "1" && $message->body !== "2" && $message->body !== "3") {
-                $message->body = "Opção inválida.";
-                $this->sendMessage($message);
-            }else{
-                $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
-                $nextRandomQuestion = $userQuestionStatus->current_random_question + 1;
-                if($nextRandomQuestion > 7) {
-                    $nextRandomQuestion = 1;
-                }
-                $userQuestionStatus->current_random_question = $nextRandomQuestion;
-                $userQuestionStatus->save();
-            }
-        }else if($questaoAtual == 6) {
-            $userQuestionStatus->instagram = $message->body;
-            $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
-            $userQuestionStatus->save();
-        }else if($questaoAtual == 7) {
-            $userQuestionStatus->school = $message->body;
-            $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
-            $userQuestionStatus->save();
-        }else if($questaoAtual == 8) {
-            if($message->media == null) {
-                $message->body = "Desculpe essa nao é uma imagem valida";
-                $this->sendMessage($message);
-            } else {
-                $userQuestionStatus->image_sent = $message->media;
-                $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
-                $userQuestionStatus->save();
-                $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
-                $this->sendMessage($message);
-                $vocacaoId = rand(1, 7);
-                $vocacao = Vocation::find($vocacaoId);
-                $imagePath = AIServiceIntegration::generateImage($message->media, $vocacao->id);
-                $userQuestionStatus->image_generated = $imagePath;
-                $userQuestionStatus->vocation = $vocacao->nome;
-                $userQuestionStatus->save();
-                $path = Storage::disk('public')->path($userQuestionStatus->image_generated);
-                $this->sendImageMessage($message, base64_encode(file_get_contents($path)));
-                $message->body = "O resultado do seu teste foi: " .$userQuestionStatus->vocation. ".
-        Compartilhe seu resultado nos stories do Instagram, marcando @computacaotorres, e siga o perfil @computacaotorres.
-        Cumprindo esses passos, você concorre a uma Alexa!";
-                $this->sendMessage($message);
-                return;
-            }
-        } else if($questaoAtual > 8) {
-            if($userQuestionStatus->image_generated == null) {
-                $message->body = "Estou trabalhando no resultado, por favor aguarde. Irei lhe enviar uma mensagem assim que finalizar";
-                $this->sendMessage($message);
-            }else {
-                $path = Storage::disk('public')->path($userQuestionStatus->image_generated);
+        // 🔹 Se já terminou o fluxo, apaga o registro e encerra
+        if ($questaoAtual > 8) {
+            $userQuestionStatus->delete();
 
-                $message->body = $userQuestionStatus->image_generated;
-                $this->sendImageMessage($message, base64_encode(file_get_contents($path)));
-
-                $message->body = "O resultado do seu teste foi: " .$userQuestionStatus->vocation. ".
-        Compartilhe seu resultado nos stories do Instagram, marcando @computacaotorres, e siga o perfil @computacaotorres.
-        Cumprindo esses passos, você concorre a uma Alexa!";
-                $this->sendMessage($message);
-            }
-            
+            $message->body = "✅ Obrigado por participar! Envie qualquer mensagem para começar novamente.";
+            $this->sendMessage($message);
             return;
         }
 
-        if($userQuestionStatus->current_question === -1) {
-            $userQuestionStatus->current_question = $userQuestionStatus->current_question + 1;
+        // 🔹 Se é o primeiro contato, envia a primeira pergunta
+        if ($questaoAtual === -1) {
+            $userQuestionStatus->update(['current_question' => 0]);
+            $question = QuestionBot::where('order', 0)->first();
+
+            $message->body = $question ? $question->question : "Olá! Qual é o seu nome?";
+            $this->sendMessage($message);
+            return;
+        }
+
+        // 🔹 Etapa 0: recebe o nome
+        if ($questaoAtual === 0) {
+            $userQuestionStatus->name = $message->body;
+            $userQuestionStatus->increment('current_question');
             $userQuestionStatus->save();
         }
 
-        if($userQuestionStatus->current_question === 0) {
-            $question = QuestionBot::where(column: 'order', operator: "=", value: 0)->first();
-            $message->body = $question->question;
-            $this->sendMessage($message);
-        }else if($userQuestionStatus->current_question >= 1 && $userQuestionStatus->current_question <= 5) {
-            $question = QuestionBot::where(column: 'order', operator: "=", value: $userQuestionStatus->current_random_question)->first();
-            $message->body = $question->question;
-            $this->sendMessage($message);
-        }else if($userQuestionStatus->current_question === 6) {
-            $message->body = "Qual seu instagram? (Para validação do sorteio da ALEXA)";
-            $this->sendMessage($message);
-        }else if ($userQuestionStatus->current_question === 7) {
-            $message->body = "Qual sua escola?";
-            $this->sendMessage($message);
-        }else if ($userQuestionStatus->current_question === 8) {
-            $message->body = "Me envie por favor uma selfie onde apareça o seu rosto para que eu possa gerar uma imagem sua estilo PIXAR com inteligencia artificial";
-            $this->sendMessage($message);
+        // 🔹 Etapas 1 a 5: perguntas de múltipla escolha
+        elseif ($questaoAtual > 0 && $questaoAtual <= 5) {
+            if (!in_array($message->body, ['1', '2', '3'])) {
+                $message->body = "⚠️ Opção inválida. Responda com 1, 2 ou 3.";
+                $this->sendMessage($message);
+                return;
+            }
+
+            $userQuestionStatus->increment('current_question');
+
+            $next = $userQuestionStatus->current_random_question + 1;
+            if ($next > 7) $next = 1;
+            $userQuestionStatus->current_random_question = $next;
+            $userQuestionStatus->save();
         }
-        
+
+        // 🔹 Etapa 6: Instagram
+        elseif ($questaoAtual === 6) {
+            $userQuestionStatus->instagram = $message->body;
+            $userQuestionStatus->increment('current_question');
+            $userQuestionStatus->save();
+        }
+
+        // 🔹 Etapa 7: Escola
+        elseif ($questaoAtual === 7) {
+            $userQuestionStatus->school = $message->body;
+            $userQuestionStatus->increment('current_question');
+            $userQuestionStatus->save();
+        }
+
+        // 🔹 Etapa 8: Imagem / Resultado
+        elseif ($questaoAtual === 8) {
+            if (!$message->media) {
+                $message->body = "❌ Por favor, envie uma imagem válida (selfie).";
+                $this->sendMessage($message);
+                return;
+            }
+
+            $userQuestionStatus->image_sent = $message->media;
+            $userQuestionStatus->increment('current_question');
+            $userQuestionStatus->save();
+
+            $this->sendMessage($message->fill(['body' => "⏳ Gerando seu resultado, aguarde um momento..."]));
+
+            // gera imagem e resultado aleatório
+            $vocacao = Vocation::find(rand(1, 7));
+            Log::info('Gerando imagem para vocação', ['vocacao_id' => $vocacao->id, 'media' => $message->media]);
+            $imagePath = AIServiceIntegration::generateImage($message->media, $vocacao->id);
+            Log::info('Imagem gerada com sucesso', ['image_path' => $imagePath]);
+
+            $userQuestionStatus->update([
+                'image_generated' => $imagePath,
+                'vocation' => $vocacao->nome,
+            ]);
+
+            $path = Storage::disk('public')->path($imagePath);
+            Log::info('Preparando para enviar imagem', ['full_path' => $path]);
+            
+            if (!file_exists($path)) {
+                Log::error('Arquivo de imagem não encontrado', ['path' => $path]);
+                $message->body = "❌ Desculpe, ocorreu um erro ao gerar sua imagem. Por favor, tente novamente.";
+                $this->sendMessage($message);
+                return;
+            }
+
+            $imageContent = file_get_contents($path);
+            if ($imageContent === false) {
+                Log::error('Não foi possível ler o arquivo de imagem', ['path' => $path]);
+                $message->body = "❌ Desculpe, ocorreu um erro ao processar sua imagem. Por favor, tente novamente.";
+                $this->sendMessage($message);
+                return;
+            }
+
+            $mime = mime_content_type($path); // detecta automaticamente image/jpeg, image/png etc.
+            $base64Image = 'data:' . $mime . ';base64,' . base64_encode($imageContent);
+            Log::info('Enviando imagem', ['size' => strlen($base64Image)]);
+            
+            $result = $this->sendImageMessage($message, $base64Image);
+            Log::info('Resultado do envio da imagem', ['result' => $result]);
+
+            $message->body = "🎯 O resultado do seu teste foi: *{$vocacao->nome}*.
+    Compartilhe nos stories e marque @computacaotorres para concorrer a uma Alexa!";
+            $this->sendMessage($message);
+
+            // 🔹 Apaga o usuário no fim (permite refazer)
+            $userQuestionStatus->delete();
+            return;
+        }
+
+        // 🔹 Próxima pergunta (baseado na etapa atual)
+        $q = $userQuestionStatus->current_question;
+        $question = null;
+
+        if ($q === 0) {
+            $question = QuestionBot::where('order', 0)->first();
+        } elseif ($q >= 1 && $q <= 5) {
+            $question = QuestionBot::where('order', $userQuestionStatus->current_random_question)->first();
+        }
+
+        if ($question) {
+            $message->body = $question->question;
+        } elseif ($q === 6) {
+            $message->body = "📸 Qual o seu Instagram? (para validação do sorteio da Alexa)";
+        } elseif ($q === 7) {
+            $message->body = "🏫 Qual sua escola?";
+        } elseif ($q === 8) {
+            $message->body = "🤳 Envie uma selfie para gerar sua imagem estilo PIXAR!";
+        } else {
+            $message->body = "✅ Obrigado por participar!";
+        }
+
+        $this->sendMessage($message);
     }
+
 }
