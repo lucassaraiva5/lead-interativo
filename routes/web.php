@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ResultsController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WhatsAppConnectionController;
 use App\Livewire\CadastroUsuario;
@@ -24,6 +25,13 @@ Route::get('/whatsapp/status', [WhatsAppConnectionController::class, 'checkConne
 Route::post('/webhook', [WebhookController::class, 'handle']);
 Route::get('/webhook', [WebhookController::class, 'handle']);
 Route::get('/export/excel', [ExportController::class, 'exportData']);
+Route::get('/results', [ResultsController::class, 'index']);
+Route::options('/results', function () {
+    return response('', 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
 
 
 Route::post('/logout', function () {

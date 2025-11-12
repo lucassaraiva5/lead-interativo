@@ -38,7 +38,11 @@ class AIServiceIntegration {
             
             self::cleanupTempFiles($tempImagePng);
             
-            return $finalImage;
+            // Retorna um array com ambas as imagens: a pura do GPT e a final com moldura
+            return [
+                'gpt' => $processedImage,  // Imagem pura do GPT (image_xxx.jpg)
+                'final' => $finalImage    // Imagem final com moldura (output_xxx.png)
+            ];
         } catch (\Exception $e) {
             error_log("Error in image generation: " . $e->getMessage());
             throw $e;

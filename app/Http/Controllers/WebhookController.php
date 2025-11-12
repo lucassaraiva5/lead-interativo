@@ -120,9 +120,17 @@ class WebhookController extends Controller
 
         $questaoAtual = $userQuestionStatus->current_question;
 
-        // 🔹 Se já terminou o fluxo, apaga o registro e encerra
+        // 🔹 Se já terminou o fluxo, permite refazer resetando o questionário
         if ($questaoAtual > 9) {
-            $userQuestionStatus->delete();
+            // Reseta para permitir refazer, limpando os dados do resultado anterior
+            $userQuestionStatus->update([
+                'current_question' => -1,
+                'current_random_question' => rand(1, 7),
+                'vocation' => null,
+                'image_generated' => null,
+                'image_gpt' => null,
+                'image_sent' => null
+            ]);
 
             $message->body = "✅ Obrigado por participar! Envie qualquer mensagem para começar novamente.";
             $this->sendMessage($message);
@@ -205,15 +213,16 @@ class WebhookController extends Controller
             // gera imagem e resultado aleatório
             $vocacao = Vocation::find(rand(1, 7));
             Log::info('Gerando imagem para vocação', ['vocacao_id' => $vocacao->id, 'media' => $message->media]);
-            $imagePath = AIServiceIntegration::generateImage($message->media, $vocacao->id, $userQuestionStatus->preferred_style);
-            Log::info('Imagem gerada com sucesso', ['image_path' => $imagePath]);
+            $images = AIServiceIntegration::generateImage($message->media, $vocacao->id, $userQuestionStatus->preferred_style);
+            Log::info('Imagem gerada com sucesso', ['images' => $images]);
 
             $userQuestionStatus->update([
-                'image_generated' => $imagePath,
+                'image_generated' => $images['final'],  // Imagem com moldura
+                'image_gpt' => $images['gpt'],        // Imagem pura do GPT
                 'vocation' => $vocacao->nome,
             ]);
 
-            $path = Storage::disk('public')->path($imagePath);
+            $path = Storage::disk('public')->path($images['final']);
             Log::info('Preparando para enviar imagem', ['full_path' => $path]);
             
             if (!file_exists($path)) {
@@ -242,8 +251,9 @@ class WebhookController extends Controller
     Compartilhe nos stories e marque @computacaotorres para concorrer a uma Alexa!";
             $this->sendMessage($message);
 
-            // 🔹 Apaga o usuário no fim (permite refazer)
-            $userQuestionStatus->delete();
+            // 🔹 Mantém o registro para que possa ser retornado pela rota /results
+            // Se quiser permitir refazer, pode resetar current_question para -1 em vez de deletar
+            // $userQuestionStatus->delete();
             return;
         }
 
