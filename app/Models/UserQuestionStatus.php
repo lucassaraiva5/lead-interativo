@@ -16,6 +16,7 @@ class UserQuestionStatus extends Model
         'school',
         'questionary_id',
         'image_generated',
-        'current_question'
+        'current_question',
+        'preferred_style'
     ];
 }

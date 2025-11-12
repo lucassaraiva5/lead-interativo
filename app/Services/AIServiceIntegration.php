@@ -11,15 +11,28 @@ class AIServiceIntegration {
     private const MAX_IMAGE_SIZE = 1024;
     private const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
 
-    public static function generateImage(string $fileName, int $id)
+    public static function generateImage(string $fileName, int $id, int $idPrompt)
     {
         set_time_limit(-1);
         $client = new Client();
         $apiKey = config('services.api.key');
 
+        switch ($idPrompt) {
+            case 1:
+                $promptContent = 'Transform this person into a Pixar 3D style programmer character preserving the maximum of the image traits with a programming background containing code snippets on screens, computer monitors, tech gadgets.';
+                break;
+            case 2:
+                $promptContent = 'Imagine this person 10 years in the future, highly successful in the technology field. Depict them as a visionary tech leader, surrounded by advanced technology, futuristic devices, and digital innovation. The background should feature an iconic cityscape from either Dubai, the United States, London, or Singapore, symbolizing global success and modern achievement. Maintain the person\'s key facial traits and professional appearance, with a vibrant, inspiring atmosphere.';
+                break;
+            
+            default:
+                $promptContent = 'Imagine this person 10 years in the future, highly successful in the technology field. Depict them as a visionary tech leader, surrounded by advanced technology, futuristic devices, and digital innovation. The background should feature an iconic cityscape from either Dubai, the United States, London, or Singapore, symbolizing global success and modern achievement. Maintain the person\'s key facial traits and professional appearance, with a vibrant, inspiring atmosphere.';
+                break;
+        }
+
         try {
             $tempImagePng = self::prepareImage($fileName);
-            $outputImage = self::callOpenAIAPI($client, $apiKey, $tempImagePng);
+            $outputImage = self::callOpenAIAPI($client, $apiKey, $tempImagePng, $promptContent);
             $processedImage = self::processAndSaveOutput($outputImage);
             $finalImage = self::mergeWithBackground($processedImage, $id);
             
@@ -79,14 +92,16 @@ class AIServiceIntegration {
         return $pngImage;
     }
 
-    private static function callOpenAIAPI(Client $client, string $apiKey, string $imagePath): string
+    private static function callOpenAIAPI(Client $client, string $apiKey, string $imagePath, string $promptContent): string
     {
         $response = $client->post('https://api.openai.com/v1/images/edits', [
             'headers' => ['Authorization' => 'Bearer ' . $apiKey],
             'multipart' => [
                 ['name' => 'image', 'contents' => fopen($imagePath, 'r'), 'filename' => 'input.png'],
                 ['name' => 'model', 'contents' => 'gpt-image-1'],
-                ['name' => 'prompt', 'contents' => 'Transform this person into a Pixar 3D style programmer character preserving the maximum of the image traits with a programming background containing code snippets on screens, computer monitors, tech gadgets.'],
+                ['name' => 'prompt', 'contents' => $promptContent],
+                //['name' => 'prompt', 'contents' => 'Imagine this person 10 years in the future, highly successful in the technology field. Depict them as a visionary tech leader, surrounded by advanced technology, futuristic devices, and digital innovation. The background should feature an iconic cityscape from either Dubai, the United States, London, or Singapore, symbolizing global success and modern achievement. Maintain the person\'s key facial traits and professional appearance, with a vibrant, inspiring atmosphere.'],
+                //['name' => 'prompt', 'contents' => 'Transform this person into a Pixar 3D style programmer character preserving the maximum of the image traits with a programming background containing code snippets on screens, computer monitors, tech gadgets.'],
                 ['name' => 'size', 'contents' => '1024x1024']
             ]
         ]);
