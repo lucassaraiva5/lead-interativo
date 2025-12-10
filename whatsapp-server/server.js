@@ -17,7 +17,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 const server = http.createServer(app);
 const io = socketIO(server, {
     cors: {
-        origin: "http://localhost:8000", // Seu domínio Laravel
+        origin: "https://whats.ajudabr.com/", // Seu domínio Laravel
         methods: ["GET", "POST"]
     }
 });
