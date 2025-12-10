@@ -18,6 +18,8 @@ class WebhookController extends Controller
     public function handle(Request $request)
     {
         $event = $request->all();
+        
+        Log::info('Webhook recebido', ['event' => $event]);
 
         $from = $event["data"]["from"] ?? null;
         $to = $event["data"]["to"] ?? $from;
@@ -29,6 +31,12 @@ class WebhookController extends Controller
             Log::error('Webhook recebido sem número de origem', ['event' => $event]);
             return response("Missing sender", 400);
         }
+
+        Log::info('Processando mensagem', [
+            'from' => $from,
+            'body' => $body,
+            'has_media' => !empty($media)
+        ]);
 
         // Salva a mensagem
         $message = Message::create([
@@ -46,24 +54,44 @@ class WebhookController extends Controller
     public function sendMessage(Message $message)
     {
         try {
+            $whatsappServerUrl = env('WHATSAPP_SERVER_URL', 'http://localhost:4004');
+            $number = str_replace('@c.us', '', $message->from);
+            
+            Log::info('Enviando mensagem WhatsApp', [
+                'url' => $whatsappServerUrl . '/send-message',
+                'number' => $number,
+                'message' => $message->body
+            ]);
+            
             $client = new \GuzzleHttp\Client();
-            $response = $client->post('http://localhost:3000/send-message', [
+            $response = $client->post($whatsappServerUrl . '/send-message', [
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json'
                 ],
                 'json' => [
-                    'number' => str_replace('@c.us', '', $message->from),
+                    'number' => $number,
                     'message' => $message->body
                 ],
                 'http_errors' => false
             ]);
 
-            if ($response->getStatusCode() !== 200) {
-                Log::error('Erro ao enviar mensagem WhatsApp: ' . $response->getBody());
+            $statusCode = $response->getStatusCode();
+            $responseBody = $response->getBody()->getContents();
+            
+            Log::info('Resposta do servidor WhatsApp', [
+                'status' => $statusCode,
+                'response' => $responseBody
+            ]);
+
+            if ($statusCode !== 200) {
+                Log::error('Erro ao enviar mensagem WhatsApp: ' . $responseBody);
             }
         } catch (\Exception $e) {
-            Log::error('Erro ao enviar mensagem WhatsApp: ' . $e->getMessage());
+            Log::error('Erro ao enviar mensagem WhatsApp', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 
@@ -85,8 +113,16 @@ class WebhookController extends Controller
     public function sendRequest($method, $path, $params = [])
     {
         try {
+            $whatsappServerUrl = env('WHATSAPP_SERVER_URL', 'http://localhost:4004');
+            
+            Log::info('Enviando requisição para servidor WhatsApp', [
+                'url' => $whatsappServerUrl . '/send-message',
+                'to' => $params['to'] ?? null,
+                'has_image' => !empty($params['image'])
+            ]);
+            
             $client = new \GuzzleHttp\Client();
-            $response = $client->post('http://localhost:3000/send-message', [
+            $response = $client->post($whatsappServerUrl . '/send-message', [
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json'
@@ -99,14 +135,25 @@ class WebhookController extends Controller
                 'http_errors' => false
             ]);
 
-            if ($response->getStatusCode() !== 200) {
-                Log::error('Erro ao enviar mensagem WhatsApp: ' . $response->getBody());
-                return ["Error" => $response->getBody()];
+            $statusCode = $response->getStatusCode();
+            $responseBody = $response->getBody()->getContents();
+            
+            Log::info('Resposta do servidor WhatsApp (sendRequest)', [
+                'status' => $statusCode,
+                'response' => $responseBody
+            ]);
+
+            if ($statusCode !== 200) {
+                Log::error('Erro ao enviar mensagem WhatsApp: ' . $responseBody);
+                return ["Error" => $responseBody];
             }
 
-            return json_decode($response->getBody(), true);
+            return json_decode($responseBody, true);
         } catch (\Exception $e) {
-            Log::error('Erro ao enviar mensagem WhatsApp: ' . $e->getMessage());
+            Log::error('Erro ao enviar mensagem WhatsApp (sendRequest)', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return ["Error" => $e->getMessage()];
         }
     }
