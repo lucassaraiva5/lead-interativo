@@ -29,6 +29,7 @@ class ResultsController extends Controller
 
             return [
                 'id' => (string) $userStatus->id,
+                'number' => $userStatus->number ?? '',
                 'userName' => $userStatus->name ?? '',
                 'userPhoto' => $imageUrl,
                 'profession' => $userStatus->vocation ?? '',
