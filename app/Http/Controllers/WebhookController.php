@@ -167,19 +167,9 @@ class WebhookController extends Controller
 
         $questaoAtual = $userQuestionStatus->current_question;
 
-        // 🔹 Se já terminou o fluxo, permite refazer resetando o questionário
-        if ($questaoAtual > 9) {
-            // Reseta para permitir refazer, limpando os dados do resultado anterior
-            $userQuestionStatus->update([
-                'current_question' => -1,
-                'current_random_question' => rand(1, 7),
-                'vocation' => null,
-                'image_generated' => null,
-                'image_gpt' => null,
-                'image_sent' => null
-            ]);
-
-            $message->body = "✅ Obrigado por participar! Envie qualquer mensagem para começar novamente.";
+        // 🔹 Fluxo já concluído: não permite participar novamente
+        if ($questaoAtual > 7) {
+            $message->body = "✅ Você já participou. Obrigado!";
             $this->sendMessage($message);
             return;
         }
@@ -217,21 +207,8 @@ class WebhookController extends Controller
             $userQuestionStatus->save();
         }
 
-        // 🔹 Etapa 6: Instagram
+        // 🔹 Etapa 6: Escolha de estilo
         elseif ($questaoAtual === 6) {
-            $userQuestionStatus->instagram = $message->body;
-            $userQuestionStatus->increment('current_question');
-            $userQuestionStatus->save();
-        }
-
-        // 🔹 Etapa 7: Escola
-        elseif ($questaoAtual === 7) {
-            $userQuestionStatus->school = $message->body;
-            $userQuestionStatus->increment('current_question');
-            $userQuestionStatus->save();
-        }
-
-        elseif ($questaoAtual === 8) {
             if (!in_array($message->body, ['1', '2'])) {
                 $message->body = "⚠️ Opção inválida. Responda com 1 ou 2.";
                 $this->sendMessage($message);
@@ -243,8 +220,8 @@ class WebhookController extends Controller
             $userQuestionStatus->save();
         }
 
-        // 🔹 Etapa 9: Imagem / Resultado
-        elseif ($questaoAtual === 9) {
+        // 🔹 Etapa 7: Imagem / Resultado
+        elseif ($questaoAtual === 7) {
             if (!$message->media) {
                 $message->body = "❌ Por favor, envie uma imagem válida (selfie).";
                 $this->sendMessage($message);
@@ -317,13 +294,9 @@ class WebhookController extends Controller
         if ($question) {
             $message->body = $question->question;
         } elseif ($q === 6) {
-            $message->body = "📸 Qual o seu Instagram? (para validação do sorteio da Alexa)";
-        } elseif ($q === 7) {
-            $message->body = "🏫 Qual sua escola?";
-        } elseif ($q === 8) {
             $message->body = "Vamos criar uma foto incrivel de você, mas antes, precisamos saber qual estilo você prefere?\n1. Foto no estilo PIXAR\n2. Você na carreira daqui a 10 anos\nDigite apenas o numero da opção.";
-        } elseif ($q === 9) {
-            $message->body = "🤳 Envie uma selfie para gerar sua imagem estilo escolhido!";
+        } elseif ($q === 7) {
+            $message->body = "🤳 Envie uma selfie para gerar sua imagem no estilo escolhido!";
         } else {
             $message->body = "✅ Obrigado por participar!";
         }
